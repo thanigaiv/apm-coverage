@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Trace {{ trace.trace_id }} - APM Coverage Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('traces.list_broken_traces') }}">Broken Traces</a></li>
+                <li class="breadcrumb-item active">{{ trace.trace_id }}</li>
+            </ol>
+        </nav>
+        <h1><i class="bi bi-bug"></i> Broken Trace Details</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Trace Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th style="width: 200px;">Trace ID</th>
+                        <td><code>{{ trace.trace_id }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Root Service</th>
+                        <td>
+                            <a href="{{ url_for('services.service_detail', service_name=trace.root_service) }}">
+                                {{ trace.root_service }}
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Total Spans</th>
+                        <td>{{ trace.total_spans }}</td>
+                    </tr>
+                    <tr>
+                        <th>Missing Span Count</th>
+                        <td><span class="badge bg-warning">{{ trace.missing_span_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Analyzed At</th>
+                        <td>{{ trace.analyzed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="bi bi-exclamation-triangle"></i> Missing Services ({{ trace.missing_services|length }})</h5>
+            </div>
+            <div class="card-body">
+                <p>The following services are referenced in this trace but do not have APM instrumentation:</p>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Service Name</th>
+                            <th>Team</th>
+                            <th>Environment</th>
+                            <th>Infrastructure</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in missing_services %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('services.service_detail', service_name=service.service_name) }}">
+                                    {{ service.service_name }}
+                                </a>
+                            </td>
+                            <td>{{ service.team or '-' }}</td>
+                            <td>{{ service.environment or '-' }}</td>
+                            <td>
+                                {% if service.infrastructure_type %}
+                                <span class="badge bg-secondary">{{ service.infrastructure_type }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('services.service_detail', service_name=service.service_name) }}"
+                                   class="btn btn-sm btn-primary">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

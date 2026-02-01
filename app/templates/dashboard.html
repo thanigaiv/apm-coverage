@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - APM Coverage Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="bi bi-speedometer2"></i> APM Coverage Dashboard</h1>
+        {% if last_sync %}
+        <p class="text-muted">
+            Last synced: {{ last_sync.completed_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Services</h5>
+                <h2 class="card-text">{{ total_services }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">With APM</h5>
+                <h2 class="card-text">{{ services_with_apm }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">Without APM</h5>
+                <h2 class="card-text">{{ services_without_apm }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Coverage</h5>
+                <h2 class="card-text">{{ "%.1f"|format(coverage_percentage) }}%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-diagram-3"></i> Coverage by Infrastructure Type</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Total</th>
+                            <th>With APM</th>
+                            <th>Without APM</th>
+                            <th>Coverage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for infra in infra_breakdown %}
+                        <tr>
+                            <td>{{ infra.type }}</td>
+                            <td>{{ infra.total }}</td>
+                            <td><span class="badge bg-success">{{ infra.with_apm }}</span></td>
+                            <td><span class="badge bg-danger">{{ infra.without_apm }}</span></td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width: {{ infra.percentage }}%"
+                                         aria-valuenow="{{ infra.percentage }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        {{ "%.0f"|format(infra.percentage) }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5><i class="bi bi-exclamation-triangle"></i> Customer-Facing Services Without APM</h5>
+            </div>
+            <div class="card-body">
+                {% if customer_facing_no_apm %}
+                <ul class="list-group">
+                    {% for service in customer_facing_no_apm[:10] %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('services.service_detail', service_name=service.service_name) }}">
+                            {{ service.service_name }}
+                        </a>
+                        <span class="badge bg-secondary">{{ service.team or 'No team' }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if customer_facing_no_apm|length > 10 %}
+                <p class="mt-2 text-muted">
+                    And {{ customer_facing_no_apm|length - 10 }} more...
+                    <a href="{{ url_for('services.list_services', customer_facing='yes', apm_status='disabled') }}">View all</a>
+                </p>
+                {% endif %}
+                {% else %}
+                <p class="text-success"><i class="bi bi-check-circle"></i> All customer-facing services have APM!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-bug"></i> Recent Broken Traces</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_broken_traces %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Trace ID</th>
+                            <th>Root Service</th>
+                            <th>Missing Services</th>
+                            <th>Total Spans</th>
+                            <th>Analyzed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trace in recent_broken_traces %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('traces.trace_detail', trace_id=trace.trace_id) }}">
+                                    {{ trace.trace_id[:16] }}...
+                                </a>
+                            </td>
+                            <td>{{ trace.root_service }}</td>
+                            <td>
+                                <span class="badge bg-danger">{{ trace.missing_services|length }} missing</span>
+                            </td>
+                            <td>{{ trace.total_spans }}</td>
+                            <td>{{ trace.analyzed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <a href="{{ url_for('traces.list_broken_traces') }}" class="btn btn-primary">View All Broken Traces</a>
+                {% else %}
+                <p class="text-muted">No broken traces found. Run trace analysis to populate this section.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

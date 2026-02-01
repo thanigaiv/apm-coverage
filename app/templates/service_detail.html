@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}{{ service.service_name }} - APM Coverage Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('services.list_services') }}">Services</a></li>
+                <li class="breadcrumb-item active">{{ service.service_name }}</li>
+            </ol>
+        </nav>
+        <h1>{{ service.service_name }}</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Service Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Team</th>
+                        <td>{{ service.team or 'Not specified' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Environment</th>
+                        <td>{{ service.environment or 'Not specified' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Infrastructure Type</th>
+                        <td>
+                            {% if service.infrastructure_type %}
+                            <span class="badge bg-secondary">{{ service.infrastructure_type }}</span>
+                            {% else %}
+                            Not specified
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Customer Facing</th>
+                        <td>
+                            {% if service.is_customer_facing %}
+                            <span class="badge bg-warning">Yes</span>
+                            {% else %}
+                            <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Last Seen in Catalog</th>
+                        <td>{{ service.last_seen_catalog.strftime('%Y-%m-%d %H:%M:%S') if service.last_seen_catalog else 'Never' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-activity"></i> APM Status</h5>
+            </div>
+            <div class="card-body">
+                {% if service.apm_service %}
+                    {% if service.apm_service.has_apm %}
+                    <div class="alert alert-success">
+                        <h4><i class="bi bi-check-circle"></i> APM Enabled</h4>
+                    </div>
+                    <table class="table">
+                        <tr>
+                            <th>Language</th>
+                            <td>{{ service.apm_service.apm_language or 'Unknown' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Seen in APM</th>
+                            <td>{{ service.apm_service.last_seen_apm.strftime('%Y-%m-%d %H:%M:%S') if service.apm_service.last_seen_apm else 'Never' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Span Count (24h)</th>
+                            <td>{{ service.apm_service.span_count_24h or 0 }}</td>
+                        </tr>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <h4><i class="bi bi-x-circle"></i> APM Not Enabled</h4>
+                        <p>This service does not have APM instrumentation.</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="alert alert-warning">
+                    <h4><i class="bi bi-question-circle"></i> APM Status Unknown</h4>
+                    <p>No APM data available for this service.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-tags"></i> Tags</h5>
+            </div>
+            <div class="card-body">
+                {% if service.tags %}
+                    {% for key, value in service.tags.items() %}
+                    <span class="badge bg-info me-1 mb-1">{{ key }}{% if value %}: {{ value }}{% endif %}</span>
+                    {% endfor %}
+                {% else %}
+                <p class="text-muted">No tags available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

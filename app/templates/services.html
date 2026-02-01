@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Services - APM Coverage Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="bi bi-list-ul"></i> Services</h1>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-funnel"></i> Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{{ url_for('services.list_services') }}">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search"
+                                   value="{{ filters.search or '' }}" placeholder="Service name...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="team" class="form-label">Team</label>
+                            <select class="form-select" id="team" name="team">
+                                <option value="">All Teams</option>
+                                {% for team in teams %}
+                                <option value="{{ team }}" {% if filters.team == team %}selected{% endif %}>
+                                    {{ team }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="environment" class="form-label">Environment</label>
+                            <select class="form-select" id="environment" name="environment">
+                                <option value="">All Environments</option>
+                                {% for env in environments %}
+                                <option value="{{ env }}" {% if filters.environment == env %}selected{% endif %}>
+                                    {{ env }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="infrastructure" class="form-label">Infrastructure</label>
+                            <select class="form-select" id="infrastructure" name="infrastructure">
+                                <option value="">All Types</option>
+                                {% for infra in infrastructure_types %}
+                                <option value="{{ infra }}" {% if filters.infrastructure == infra %}selected{% endif %}>
+                                    {{ infra }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="apm_status" class="form-label">APM Status</label>
+                            <select class="form-select" id="apm_status" name="apm_status">
+                                <option value="">All</option>
+                                <option value="enabled" {% if filters.apm_status == 'enabled' %}selected{% endif %}>
+                                    Enabled
+                                </option>
+                                <option value="disabled" {% if filters.apm_status == 'disabled' %}selected{% endif %}>
+                                    Disabled
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label for="customer_facing" class="form-label">Customer Facing</label>
+                            <select class="form-select" id="customer_facing" name="customer_facing">
+                                <option value="">All</option>
+                                <option value="yes" {% if filters.customer_facing == 'yes' %}selected{% endif %}>
+                                    Yes
+                                </option>
+                                <option value="no" {% if filters.customer_facing == 'no' %}selected{% endif %}>
+                                    No
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('services.list_services') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </a>
+                            <a href="{{ url_for('services.export_services') }}" class="btn btn-success float-end">
+                                <i class="bi bi-download"></i> Export CSV
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Service List ({{ services|length }} services)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Service Name</th>
+                                <th>Team</th>
+                                <th>Environment</th>
+                                <th>Infrastructure</th>
+                                <th>Customer Facing</th>
+                                <th>APM Status</th>
+                                <th>Language</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in services %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('services.service_detail', service_name=service.service_name) }}">
+                                        {{ service.service_name }}
+                                    </a>
+                                </td>
+                                <td>{{ service.team or '-' }}</td>
+                                <td>{{ service.environment or '-' }}</td>
+                                <td>
+                                    {% if service.infrastructure_type %}
+                                    <span class="badge bg-secondary">{{ service.infrastructure_type }}</span>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if service.is_customer_facing %}
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    {% else %}
+                                    <i class="bi bi-x-circle text-muted"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if service.apm_service and service.apm_service.has_apm %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Enabled
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> Disabled
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if service.apm_service and service.apm_service.apm_language %}
+                                    {{ service.apm_service.apm_language }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>{{ service.last_seen_catalog.strftime('%Y-%m-%d') if service.last_seen_catalog else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
