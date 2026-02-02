@@ -14,6 +14,76 @@
     </div>
 </div>
 
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-funnel"></i> Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{{ url_for('dashboard.index') }}">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="product" class="form-label">Product</label>
+                            <select class="form-select" id="product" name="product">
+                                <option value="">All Products</option>
+                                {% for product in products %}
+                                <option value="{{ product }}" {% if filters.product == product %}selected{% endif %}>
+                                    {{ product }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="domain" class="form-label">Domain</label>
+                            <select class="form-select" id="domain" name="domain">
+                                <option value="">All Domains</option>
+                                {% for domain in domains %}
+                                <option value="{{ domain }}" {% if filters.domain == domain %}selected{% endif %}>
+                                    {{ domain }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="funnel" class="form-label">Funnel</label>
+                            <select class="form-select" id="funnel" name="funnel">
+                                <option value="">All Funnels</option>
+                                {% for funnel in funnels %}
+                                <option value="{{ funnel }}" {% if filters.funnel == funnel %}selected{% endif %}>
+                                    {{ funnel }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="critical_flow" class="form-label">Critical Flow</label>
+                            <select class="form-select" id="critical_flow" name="critical_flow">
+                                <option value="">All</option>
+                                {% for critical_flow in critical_flows %}
+                                <option value="{{ critical_flow }}" {% if filters.critical_flow == critical_flow %}selected{% endif %}>
+                                    {{ critical_flow }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-white bg-primary">

@@ -23,6 +23,12 @@
                             <input type="text" class="form-control" id="search" name="search"
                                    value="{{ filters.search or '' }}" placeholder="Service name...">
                         </div>
+                        <div class="col-md-3">
+                            <label for="tag" class="form-label">Tag Filter</label>
+                            <input type="text" class="form-control" id="tag" name="tag"
+                                   value="{{ filters.tag or '' }}" placeholder="tier:0 or tier=0">
+                            <small class="form-text text-muted">Format: key:value or key=value</small>
+                        </div>
                         <div class="col-md-2">
                             <label for="team" class="form-label">Team</label>
                             <select class="form-select" id="team" name="team">
@@ -56,6 +62,8 @@
                                 {% endfor %}
                             </select>
                         </div>
+                    </div>
+                    <div class="row g-3 mt-1">
                         <div class="col-md-2">
                             <label for="apm_status" class="form-label">APM Status</label>
                             <select class="form-select" id="apm_status" name="apm_status">
@@ -68,7 +76,7 @@
                                 </option>
                             </select>
                         </div>
-                        <div class="col-md-1">
+                        <div class="col-md-2">
                             <label for="customer_facing" class="form-label">Customer Facing</label>
                             <select class="form-select" id="customer_facing" name="customer_facing">
                                 <option value="">All</option>

@@ -20,6 +20,7 @@ def list_services():
     apm_filter = request.args.get('apm_status')
     customer_facing_filter = request.args.get('customer_facing')
     search_query = request.args.get('search', '').strip()
+    tag_filter = request.args.get('tag', '').strip()
 
     # Build query
     query = db.session.query(Service).outerjoin(
@@ -51,8 +52,33 @@ def list_services():
     if search_query:
         query = query.filter(Service.service_name.ilike(f'%{search_query}%'))
 
-    # Get services
+    # Get services (before tag filtering)
     services = query.all()
+
+    # Apply tag filter in Python (database-agnostic approach)
+    if tag_filter:
+        # Parse tag filter (format: "key:value" or "key=value")
+        if ':' in tag_filter:
+            tag_key, tag_value = tag_filter.split(':', 1)
+        elif '=' in tag_filter:
+            tag_key, tag_value = tag_filter.split('=', 1)
+        else:
+            tag_key = tag_filter
+            tag_value = None
+
+        # Filter services by tag
+        filtered_services = []
+        for service in services:
+            if service.tags:
+                if tag_value:
+                    # Check for exact key-value match
+                    if service.tags.get(tag_key) == tag_value:
+                        filtered_services.append(service)
+                else:
+                    # Check for key existence
+                    if tag_key in service.tags:
+                        filtered_services.append(service)
+        services = filtered_services
 
     # Get filter options for dropdowns
     teams = db.session.query(Service.team).distinct().filter(Service.team.isnot(None)).all()
@@ -76,7 +102,8 @@ def list_services():
             'infrastructure': infra_filter,
             'apm_status': apm_filter,
             'customer_facing': customer_facing_filter,
-            'search': search_query
+            'search': search_query,
+            'tag': tag_filter
         }
     )
 
