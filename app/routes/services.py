@@ -43,17 +43,25 @@ def list_services():
         elif apm_filter == 'disabled':
             query = query.filter(or_(APMService.has_apm == False, APMService.has_apm == None))
 
-    if customer_facing_filter:
-        if customer_facing_filter == 'yes':
-            query = query.filter(Service.is_customer_facing == True)
-        elif customer_facing_filter == 'no':
-            query = query.filter(Service.is_customer_facing == False)
-
     if search_query:
         query = query.filter(Service.service_name.ilike(f'%{search_query}%'))
 
-    # Get services (before tag filtering)
+    # Get services (before filtering)
     services = query.all()
+
+    # Apply customer_facing filter (critical_flow=true) in Python
+    if customer_facing_filter:
+        filtered_list = []
+        for service in services:
+            # Customer-facing services are those with critical_flow=true
+            is_customer_facing = service.tags and service.tags.get('critical_flow') == 'true'
+
+            if customer_facing_filter == 'yes' and is_customer_facing:
+                filtered_list.append(service)
+            elif customer_facing_filter == 'no' and not is_customer_facing:
+                filtered_list.append(service)
+
+        services = filtered_list
 
     # Apply tag filter in Python (database-agnostic approach)
     if tag_filter:
@@ -135,12 +143,15 @@ def export_services():
 
     # Write data
     for service in services:
+        # Customer-facing services are those with critical_flow=true
+        is_customer_facing = service.tags and service.tags.get('critical_flow') == 'true'
+
         writer.writerow([
             service.service_name,
             service.team or '',
             service.environment or '',
             service.infrastructure_type or '',
-            'Yes' if service.is_customer_facing else 'No',
+            'Yes' if is_customer_facing else 'No',
             'Yes' if service.apm_service and service.apm_service.has_apm else 'No',
             service.apm_service.apm_language if service.apm_service else '',
             service.last_seen_catalog.isoformat() if service.last_seen_catalog else '',

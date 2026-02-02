@@ -147,7 +147,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if service.is_customer_facing %}
+                                    {% if service.tags and service.tags.get('critical_flow') == 'true' %}
                                     <i class="bi bi-check-circle text-success"></i>
                                     {% else %}
                                     <i class="bi bi-x-circle text-muted"></i>

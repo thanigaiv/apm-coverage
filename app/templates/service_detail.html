@@ -42,9 +42,9 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>Customer Facing</th>
+                        <th>Customer Facing (Critical Flow)</th>
                         <td>
-                            {% if service.is_customer_facing %}
+                            {% if service.tags and service.tags.get('critical_flow') == 'true' %}
                             <span class="badge bg-warning">Yes</span>
                             {% else %}
                             <span class="badge bg-secondary">No</span>

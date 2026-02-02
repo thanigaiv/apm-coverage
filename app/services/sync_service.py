@@ -191,11 +191,9 @@ def analyze_broken_traces(sample_size=100):
             # Identify why this is a potential broken trace
             reasons = []
 
-            if service.is_customer_facing:
-                reasons.append("customer-facing service")
-
+            # Customer-facing services are those with critical_flow=true
             if service.tags.get('critical_flow') == 'true':
-                reasons.append("critical flow service")
+                reasons.append("customer-facing service (critical_flow=true)")
 
             # High-value domains/products
             high_value_domains = ['experiences', 'platform', 'payments', 'booking']

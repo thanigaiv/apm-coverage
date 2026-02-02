@@ -85,7 +85,7 @@ def index():
                 'percentage': (stats['with_apm'] / stats['total'] * 100) if stats['total'] > 0 else 0
             })
 
-    # Customer-facing services without APM
+    # Customer-facing services without APM (critical_flow=true)
     customer_facing_no_apm = []
     if total_services > 0:
         apm_service_map = {apm.service_name: apm.has_apm for apm in APMService.query.filter(
@@ -93,7 +93,9 @@ def index():
         ).all()}
 
         for service in filtered_services:
-            if service.is_customer_facing and not apm_service_map.get(service.service_name, False):
+            # Customer-facing services are those with critical_flow=true
+            is_customer_facing = service.tags and service.tags.get('critical_flow') == 'true'
+            if is_customer_facing and not apm_service_map.get(service.service_name, False):
                 customer_facing_no_apm.append(service)
 
     # Recent broken traces
