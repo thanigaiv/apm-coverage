@@ -170,6 +170,67 @@ class DatadogClient:
 
         return apm_services
 
+    def get_service_dependencies(self):
+        """
+        Identify service dependencies from service definitions.
+
+        Returns:
+            dict: Map of service_name -> list of dependent services
+        """
+        dependencies = {}
+
+        try:
+            with self.api_client as api_client:
+                api_instance = ServiceDefinitionApi(api_client)
+
+                page_size = 100
+                page_number = 0
+
+                while True:
+                    response = api_instance.list_service_definitions(
+                        page_size=page_size,
+                        page_number=page_number
+                    )
+
+                    if hasattr(response, 'data') and response.data:
+                        for service_def in response.data:
+                            svc_dict = service_def.to_dict() if hasattr(service_def, 'to_dict') else service_def
+                            schema = svc_dict.get('attributes', {}).get('schema', {})
+                            service_name = schema.get('dd_service', '')
+
+                            if service_name:
+                                # Look for dependencies in links or integrations
+                                deps = []
+
+                                # Check integrations for service dependencies
+                                integrations = schema.get('integrations', {})
+                                if integrations:
+                                    for key, value in integrations.items():
+                                        if isinstance(value, str) and value:
+                                            deps.append(value)
+
+                                # Check tags for dependency hints
+                                tags = schema.get('tags', [])
+                                for tag in tags:
+                                    if tag.startswith('depends_on:') or tag.startswith('calls:'):
+                                        dep_service = tag.split(':', 1)[1]
+                                        deps.append(dep_service)
+
+                                if deps:
+                                    dependencies[service_name] = deps
+
+                        if len(response.data) < page_size:
+                            break
+
+                        page_number += 1
+                    else:
+                        break
+
+        except ApiException as e:
+            print(f"Error fetching service dependencies: {e}")
+
+        return dependencies
+
     def get_trace_spans(self, trace_id):
         """
         Fetch spans for a specific trace.
