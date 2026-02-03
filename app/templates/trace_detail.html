@@ -167,9 +167,9 @@
     var nodes = new vis.DataSet([
         {% for node in graph_nodes %}
         {
-            id: '{{ node.id }}',
-            label: '{{ node.label }}',
-            title: '{{ node.label }}\n' + ({{ 'true' if node.has_apm else 'false' }} ? 'APM: Enabled' : 'APM: Missing'),
+            id: {{ node.id|tojson }},
+            label: {{ node.label|tojson }},
+            title: {{ node.label|tojson }} + '\n' + ({{ 'true' if node.has_apm else 'false' }} ? 'APM: Enabled' : 'APM: Missing'),
             color: {
                 background: {% if node.is_root %}'#97C2FC'{% elif node.has_apm %}'#7BE141'{% else %}'#FB7E81'{% endif %},
                 border: '#2B7CE9',
@@ -194,8 +194,8 @@
     var edges = new vis.DataSet([
         {% for edge in graph_edges %}
         {
-            from: '{{ edge.from }}',
-            to: '{{ edge.to }}',
+            from: {{ edge.from|tojson }},
+            to: {{ edge.to|tojson }},
             arrows: 'to',
             smooth: {
                 type: 'curvedCW',
