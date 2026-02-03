@@ -148,15 +148,15 @@ def sync_apm_coverage():
         raise
 
 
-def analyze_broken_traces(sample_size=100):
+def analyze_broken_traces(sample_size=500):
     """
-    Analyze service dependencies to identify potential broken traces.
+    Analyze service dependencies to identify multi-service broken traces.
 
-    This identifies services without APM that are dependencies of services with APM,
-    which would result in incomplete/broken distributed traces.
+    This identifies services with APM that depend on services without APM,
+    which results in incomplete/broken distributed traces.
 
     Args:
-        sample_size: Maximum number of broken traces to store
+        sample_size: Maximum number of broken traces to store (default 500)
     """
     job = SyncJob(job_type='trace_analysis', status='running', started_at=datetime.utcnow())
     db.session.add(job)
@@ -169,7 +169,7 @@ def analyze_broken_traces(sample_size=100):
         services_with_apm = {apm.service_name for apm in APMService.query.filter_by(has_apm=True).all()}
         services_without_apm = {apm.service_name for apm in APMService.query.filter_by(has_apm=False).all()}
 
-        print(f"Analyzing traces: {len(services_with_apm)} with APM, {len(services_without_apm)} without APM")
+        print(f"Analyzing multi-service traces: {len(services_with_apm)} with APM, {len(services_without_apm)} without APM")
 
         # Clear old broken traces
         BrokenTrace.query.delete()
@@ -177,54 +177,15 @@ def analyze_broken_traces(sample_size=100):
 
         traces_created = 0
 
-        # Strategy 1: Identify high-priority services without APM
-        # These are services that should have APM based on their characteristics
-        priority_services = Service.query.filter(
-            Service.service_name.in_(services_without_apm)
-        ).all()
-
-        for service in priority_services:
-            # Skip if we've hit the limit
-            if traces_created >= sample_size:
-                break
-
-            # Identify why this is a potential broken trace
-            reasons = []
-
-            # Customer-facing services are those with critical_flow=true
-            if service.tags.get('critical_flow') == 'true':
-                reasons.append("customer-facing service (critical_flow=true)")
-
-            # High-value domains/products
-            high_value_domains = ['experiences', 'platform', 'payments', 'booking']
-            if service.tags.get('domain', '').lower() in high_value_domains:
-                reasons.append(f"high-value domain: {service.tags.get('domain')}")
-
-            # If this service has reasons to have APM, create a broken trace record
-            if reasons:
-                # Generate a synthetic trace ID based on service name
-                import hashlib
-                trace_id = hashlib.md5(f"{service.service_name}-{datetime.utcnow().date()}".encode()).hexdigest()
-
-                broken_trace = BrokenTrace(
-                    trace_id=trace_id,
-                    root_service=service.service_name,
-                    missing_services=[service.service_name],
-                    total_spans=1,
-                    missing_span_count=1,
-                    analyzed_at=datetime.utcnow()
-                )
-
-                db.session.add(broken_trace)
-                traces_created += 1
-
-        # Strategy 2: Use service dependencies if available
-        # (This would require dependency information in service definitions)
+        # Get service dependencies to identify broken multi-service traces
         try:
             dependencies = client.get_service_dependencies()
 
             if dependencies:
                 print(f"Found {len(dependencies)} services with dependencies")
+
+                # Get all services for metadata
+                all_services_map = {s.service_name: s for s in Service.query.all()}
 
                 for service_name, deps in dependencies.items():
                     if traces_created >= sample_size:
@@ -234,8 +195,9 @@ def analyze_broken_traces(sample_size=100):
                     if service_name in services_with_apm:
                         missing_deps = [dep for dep in deps if dep in services_without_apm]
 
+                        # Only create if there are missing dependencies (broken trace)
                         if missing_deps:
-                            # Generate trace ID
+                            import hashlib
                             trace_id = hashlib.md5(f"dep-{service_name}-{datetime.utcnow().date()}".encode()).hexdigest()
 
                             broken_trace = BrokenTrace(
@@ -249,6 +211,9 @@ def analyze_broken_traces(sample_size=100):
 
                             db.session.add(broken_trace)
                             traces_created += 1
+
+                            if traces_created % 50 == 0:
+                                print(f"  Created {traces_created} broken traces so far...")
 
         except Exception as e:
             print(f"Could not analyze dependencies: {e}")

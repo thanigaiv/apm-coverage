@@ -98,8 +98,10 @@ def index():
             if is_customer_facing and not apm_service_map.get(service.service_name, False):
                 customer_facing_no_apm.append(service)
 
-    # Recent broken traces
-    recent_broken_traces = BrokenTrace.query.order_by(
+    # Recent broken traces (only multi-service traces)
+    recent_broken_traces = BrokenTrace.query.filter(
+        BrokenTrace.total_spans > 1
+    ).order_by(
         BrokenTrace.analyzed_at.desc()
     ).limit(10).all()
 

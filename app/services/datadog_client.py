@@ -1,6 +1,7 @@
 """Datadog API client wrapper."""
 
 import time
+import requests
 from datetime import datetime, timedelta
 from datadog_api_client import ApiClient, Configuration
 from datadog_api_client.v2.api.service_definition_api import ServiceDefinitionApi
@@ -16,6 +17,9 @@ class DatadogClient:
 
     def __init__(self, api_key, app_key, site='datadoghq.com'):
         """Initialize Datadog API client."""
+        self.api_key = api_key
+        self.app_key = app_key
+        self.site = site
         self.configuration = Configuration()
         self.configuration.api_key['apiKeyAuth'] = api_key
         self.configuration.api_key['appKeyAuth'] = app_key
@@ -172,62 +176,67 @@ class DatadogClient:
 
     def get_service_dependencies(self):
         """
-        Identify service dependencies from service definitions.
+        Identify service dependencies based on service catalog metadata and naming patterns.
+
+        NOTE: This is a simplified approach since trace sampling APIs are not accessible.
+        In a production environment with proper API access, this would query actual trace
+        data to build real service dependency graphs.
 
         Returns:
-            dict: Map of service_name -> list of dependent services
+            dict: Map of service_name -> list of dependent services that service calls
         """
         dependencies = {}
 
         try:
-            with self.api_client as api_client:
-                api_instance = ServiceDefinitionApi(api_client)
+            print("Building service dependencies from catalog metadata...")
 
-                page_size = 100
-                page_number = 0
+            # Get all services
+            all_services = self.get_all_catalog_services()
 
-                while True:
-                    response = api_instance.list_service_definitions(
-                        page_size=page_size,
-                        page_number=page_number
-                    )
+            # Build a map of services by name
+            service_map = {svc['service_name']: svc for svc in all_services}
 
-                    if hasattr(response, 'data') and response.data:
-                        for service_def in response.data:
-                            svc_dict = service_def.to_dict() if hasattr(service_def, 'to_dict') else service_def
-                            schema = svc_dict.get('attributes', {}).get('schema', {})
-                            service_name = schema.get('dd_service', '')
+            # Infer dependencies based on tags and naming patterns
+            for service in all_services:
+                service_name = service['service_name']
+                tags = service.get('tags', {})
 
-                            if service_name:
-                                # Look for dependencies in links or integrations
-                                deps = []
+                # Extract explicit dependency tags if present
+                depends_on = []
 
-                                # Check integrations for service dependencies
-                                integrations = schema.get('integrations', {})
-                                if integrations:
-                                    for key, value in integrations.items():
-                                        if isinstance(value, str) and value:
-                                            deps.append(value)
+                # Check for depends_on or calls tags
+                for key, value in tags.items():
+                    if key in ['depends_on', 'calls', 'downstream']:
+                        # Value might be comma-separated list
+                        if value:
+                            depends_on.extend([s.strip() for s in value.split(',') if s.strip()])
 
-                                # Check tags for dependency hints
-                                tags = schema.get('tags', [])
-                                for tag in tags:
-                                    if tag.startswith('depends_on:') or tag.startswith('calls:'):
-                                        dep_service = tag.split(':', 1)[1]
-                                        deps.append(dep_service)
+                # Infer common API/service patterns
+                # Frontend services often call API services
+                if any(keyword in service_name.lower() for keyword in ['web', 'frontend', 'ui', 'app']):
+                    # Look for corresponding API services
+                    for other_service in all_services:
+                        other_name = other_service['service_name']
+                        if 'api' in other_name.lower() or 'service' in other_name.lower():
+                            # Check if they share a domain or product tag
+                            if (tags.get('product') and tags.get('product') == other_service.get('tags', {}).get('product')) or \
+                               (tags.get('domain') and tags.get('domain') == other_service.get('tags', {}).get('domain')):
+                                depends_on.append(other_name)
 
-                                if deps:
-                                    dependencies[service_name] = deps
+                if depends_on:
+                    # Remove duplicates and self-references
+                    depends_on = list(set([d for d in depends_on if d != service_name and d in service_map]))
+                    if depends_on:
+                        dependencies[service_name] = depends_on
 
-                        if len(response.data) < page_size:
-                            break
+            print(f"Found inferred dependencies for {len(dependencies)} services")
+            print("NOTE: These are inferred dependencies from service metadata.")
+            print("Real trace-based dependencies require trace API access.")
 
-                        page_number += 1
-                    else:
-                        break
-
-        except ApiException as e:
-            print(f"Error fetching service dependencies: {e}")
+        except Exception as e:
+            print(f"Error building service dependencies: {e}")
+            import traceback
+            traceback.print_exc()
 
         return dependencies
 
